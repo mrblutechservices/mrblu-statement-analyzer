@@ -5,6 +5,9 @@ from parser import parse_pdf
 
 app = Flask(__name__)
 
+
+app.config['MAX_CONTENT_LENGTH'] = 20 * 1024 * 1024
+
 # Global storage for filtering
 data_store = []
 
