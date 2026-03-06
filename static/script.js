@@ -15,7 +15,8 @@ formData.append("pdf",file)
 
 fetch("/upload",{
 method:"POST",
-body:formData
+body:formData,
+timeout:60000
 })
 .then(res=>res.json())
 .then(data=>{
