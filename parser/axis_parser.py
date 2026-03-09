@@ -1,60 +1,104 @@
 import pdfplumber
 import re
 
+date_pattern = r"\b(\d{2}[-/]\d{2}[-/]\d{4}|\d{2}-[A-Za-z]{3}-\d{2,4}|\d{2} [A-Za-z]{3} \d{4})\b"
 
-def parse_axis_header(file):
 
-    info = {
-        "Account Holder": "",
-        "Account Number": "",
-        "Branch": "",
-        "IFSC": "",
-        "Mobile": "",
-        "Email": "",
-        "Period": "",
-        "Customer ID": ""
-    }
+def clean_text(text):
+
+    if not text:
+        return ""
+
+    text = str(text)
+
+    text = text.replace("\n", " ")
+    text = text.replace("  ", " ")
+
+    return text.strip()
+
+
+def extract_party(description):
+
+    if "UPI" in description:
+
+        parts = description.split("/")
+
+        if len(parts) >= 4:
+            return parts[3]
+
+    return "Unknown"
+
+
+def extract_mode(description):
+
+    if "UPI" in description:
+        return "UPI"
+
+    if "IMPS" in description:
+        return "IMPS"
+
+    if "NEFT" in description:
+        return "NEFT"
+
+    if "ATM" in description:
+        return "ATM"
+
+    return "Other"
+
+
+def parse_axis(file):
+
+    transactions = []
 
     with pdfplumber.open(file) as pdf:
 
-        page = pdf.pages[0]
+        for page in pdf.pages:
 
-        words = page.extract_words()
+            table = page.extract_table()
 
-        text = " ".join([w["text"] for w in words])
+            if not table:
+                continue
 
-        # ACCOUNT HOLDER (first big text)
-        if words:
-            info["Account Holder"] = words[0]["text"]
+            for row in table:
 
-        # ACCOUNT NUMBER
-        acc = re.search(r'Account\s*No\s*[:]*\s*(\d{10,})', text)
-        if acc:
-            info["Account Number"] = acc.group(1)
+                if not row:
+                    continue
 
-        # CUSTOMER ID
-        cid = re.search(r'Customer\s*ID\s*[:]*\s*(\d+)', text)
-        if cid:
-            info["Customer ID"] = cid.group(1)
+                row_text = " ".join([str(x) for x in row if x])
 
-        # IFSC
-        ifsc = re.search(r'UTIB[0-9A-Z]{7}', text)
-        if ifsc:
-            info["IFSC"] = ifsc.group()
+                if not re.search(date_pattern, row_text):
+                    continue
 
-        # EMAIL
-        email = re.search(r'[\w\.-]+@[\w\.-]+', text)
-        if email:
-            info["Email"] = email.group()
+                date = row[0] if len(row) > 0 else ""
 
-        # MOBILE
-        mobile = re.search(r'\d{4}608', text)
-        if mobile:
-            info["Mobile"] = mobile.group()
+                cheque = row[1] if len(row) > 1 else ""
 
-        # PERIOD
-        period = re.search(r'From\s*:\s*([0-9\-]+)\s*To\s*:\s*([0-9\-]+)', text)
-        if period:
-            info["Period"] = period.group(1) + " to " + period.group(2)
+                description = clean_text(row[2] if len(row) > 2 else "")
 
-    return info
+                debit = row[3] if len(row) > 3 else ""
+                credit = row[4] if len(row) > 4 else ""
+                balance = row[5] if len(row) > 5 else ""
+
+                branch = row[6] if len(row) > 6 else ""
+
+                party = extract_party(description)
+
+                mode = extract_mode(description)
+
+                transaction = {
+                    "Date": date,
+                    "Value_Date": "",
+                    "Description": description,
+                    "Cheque_No": cheque,
+                    "Debit": debit,
+                    "Credit": credit,
+                    "Balance": balance,
+                    "Branch_Code": branch,
+                    "Party": party,
+                    "Mode": mode,
+                    "Type": "",
+                }
+
+                transactions.append(transaction)
+
+    return transactions
