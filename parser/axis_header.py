@@ -19,42 +19,31 @@ def parse_axis_header(file):
 
         page = pdf.pages[0]
 
-        words = page.extract_words()
+        text = page.extract_text()
 
-        text = " ".join([w["text"] for w in words])
+        if not text:
+            return info
 
-        # ACCOUNT HOLDER (first big text)
-        if words:
-            info["Account Holder"] = words[0]["text"]
+        text = text.upper()
 
-        # ACCOUNT NUMBER
-        acc = re.search(r'Account\s*No\s*[:]*\s*(\d{10,})', text)
+        # Account number
+        acc = re.search(r"\b\d{10,18}\b", text)
         if acc:
-            info["Account Number"] = acc.group(1)
-
-        # CUSTOMER ID
-        cid = re.search(r'Customer\s*ID\s*[:]*\s*(\d+)', text)
-        if cid:
-            info["Customer ID"] = cid.group(1)
+            info["Account Number"] = acc.group()
 
         # IFSC
-        ifsc = re.search(r'UTIB[0-9A-Z]{7}', text)
+        ifsc = re.search(r"UTIB[0-9A-Z]{7}", text)
         if ifsc:
             info["IFSC"] = ifsc.group()
 
-        # EMAIL
-        email = re.search(r'[\w\.-]+@[\w\.-]+', text)
+        # Email
+        email = re.search(r"[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}", text)
         if email:
             info["Email"] = email.group()
 
-        # MOBILE
-        mobile = re.search(r'\d{4}608', text)
-        if mobile:
-            info["Mobile"] = mobile.group()
-
-        # PERIOD
-        period = re.search(r'From\s*:\s*([0-9\-]+)\s*To\s*:\s*([0-9\-]+)', text)
+        # Period
+        period = re.search(r"\d{2}-\d{2}-\d{4}\s+TO\s+\d{2}-\d{2}-\d{4}", text)
         if period:
-            info["Period"] = period.group(1) + " to " + period.group(2)
+            info["Period"] = period.group()
 
     return info
