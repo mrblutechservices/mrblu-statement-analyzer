@@ -1,18 +1,73 @@
 from flask import Flask, render_template, request, jsonify, send_file
 import pandas as pd
 import os
+import re
 
-from parser import parse_pdf
+from parser.core_parser import parse_pdf
 
 app = Flask(__name__)
 
-
 app.config['MAX_CONTENT_LENGTH'] = 20 * 1024 * 1024
 
-# Global storage for filtering
 data_store = []
 info_store = {}
 
+
+# ---------------- NAME NORMALIZATION ---------------- #
+
+def normalize_name(name):
+
+    if not name:
+        return "Unknown"
+
+    name = str(name).upper()
+
+    name = re.sub(r"[^A-Z ]", "", name)
+
+    name = name.strip()
+
+    if name == "":
+        return "Unknown"
+
+    return name
+
+
+# ---------------- PARTY FALLBACK ---------------- #
+
+def extract_party_from_desc(desc):
+
+    if not desc:
+        return "Unknown"
+
+    d = desc.upper()
+
+    tokens = re.split(r"[\/\-\s]", d)
+
+    ignore = [
+        "UPI","IMPS","RTGS","NEFT","ATM",
+        "CR","DR","PAYMENT","TRANSFER",
+        "CHARGE","DEBIT","CREDIT"
+    ]
+
+    best = ""
+
+    for t in tokens:
+
+        name = re.sub(r"[^A-Z ]", "", t).strip()
+
+        if name in ignore:
+            continue
+
+        if len(name) > len(best):
+            best = name
+
+    if len(best) > 3:
+        return best.title()
+
+    return "Unknown"
+
+
+# ---------------- HOME ---------------- #
 
 @app.route("/")
 def home():
@@ -36,7 +91,6 @@ def upload():
         if file.filename == "":
             return jsonify({"error": "Empty file name"})
 
-        # Parse PDF
         result = parse_pdf(file)
 
         if isinstance(result, dict):
@@ -52,16 +106,49 @@ def upload():
         if not isinstance(data, list):
             data = []
 
-        # Save data globally for filtering
-        data_store = data
+        fixed_data = []
+
+        for row in data:
+
+            if not isinstance(row, dict):
+                continue
+
+            party = row.get("Party", "")
+
+            if not party or party == "Unknown":
+
+                desc = row.get("Description", "")
+
+                party = extract_party_from_desc(desc)
+
+            party = normalize_name(party)
+
+            new_row = {
+
+                "Date": row.get("Date",""),
+                "Value_Date": row.get("Value_Date",""),
+                "Party": party,
+                "Mode": row.get("Mode",""),
+                "Type": row.get("Type",""),
+                "Cheque_No": row.get("Cheque_No",""),
+                "Debit": row.get("Debit",""),
+                "Credit": row.get("Credit",""),
+                "Balance": row.get("Balance",""),
+                "Branch_Code": row.get("Branch_Code",""),
+                "Description": row.get("Description","")
+
+            }
+
+            fixed_data.append(new_row)
+
+        data_store = fixed_data
         info_store = info
 
-        # Extract party names
         names = list(
             set(
                 [
                     r.get("Party", "Unknown")
-                    for r in data
+                    for r in fixed_data
                     if isinstance(r, dict)
                 ]
             )
@@ -71,7 +158,7 @@ def upload():
 
         return jsonify(
             {
-                "data": data,
+                "data": fixed_data,
                 "names": names,
                 "info": info_store,
             }
@@ -98,19 +185,18 @@ def filter_data():
         if df.empty:
             return jsonify([])
 
-        # Column filter
         if req.get("column") and req.get("value"):
 
             col = req["column"]
 
             if col in df.columns:
+
                 df = df[
                     df[col]
                     .astype(str)
                     .str.contains(req["value"], case=False, na=False)
                 ]
 
-        # Amount filter
         if req.get("amount"):
 
             amt = str(req["amount"])
@@ -122,7 +208,6 @@ def filter_data():
                 )
             ]
 
-        # Type filter
         if req.get("type") and req["type"] != "":
 
             t = req["type"].lower()
