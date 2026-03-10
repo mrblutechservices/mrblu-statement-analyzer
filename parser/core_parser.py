@@ -1,105 +1,99 @@
 from .bank_detector import detect_bank
-from .header_parser import extract_header_info
-
 from .axis_parser import parse_axis
 from .axis_header import parse_axis_header
 from .bob_parser import parse_bob
 from .idfc_parser import parse_idfc
-from .sbi_parser import parse_sbi
-from .idbi_parser import parse_idbi
-from .boi_parser import parse_boi
-from .iob_parser import parse_iob
+from .text_parser import parse_text
+from .header_parser import extract_header_info
 
 import io
 
+
 def parse_pdf(file):
 
-    # read pdf once into memory
+    print("=== PARSER START ===")
+
     pdf_bytes = file.read()
 
-    # create fresh stream
     stream = io.BytesIO(pdf_bytes)
 
     bank = detect_bank(stream)
-    print("DETECTED BANK:", bank)
 
-    stream.seek(0)
-
-    # fallback detection
-    if bank == "Unknown":
-        print("Bank not detected")
-        
-        return {
-            "data": [],
-            "info": {"bank": "Unknown"},
-            "names": []
-
-        }
-
-    # header parsing
-    stream = io.BytesIO(pdf_bytes)
-    header_info = extract_header_info(stream)
+    print("BANK DETECTED:", bank)
 
     transactions = []
+    header_info = {}
 
+    # -------- AXIS --------
     if bank == "Axis Bank":
 
         stream = io.BytesIO(pdf_bytes)
         transactions = parse_axis(stream)
 
+        if not transactions:
+
+            print("AXIS FALLBACK PARSER")
+
+            stream = io.BytesIO(pdf_bytes)
+            transactions = parse_text(stream)
+
         stream = io.BytesIO(pdf_bytes)
         header_info = parse_axis_header(stream)
 
-        print("HEADER DATA:", header_info)
-
+    # -------- BOB --------
     elif bank == "Bank of Baroda":
-
-        print("ENTERED BOB PARSER")
 
         stream = io.BytesIO(pdf_bytes)
         transactions = parse_bob(stream)
 
-        print("BOB RESULT:", len(transactions))
+        if not transactions:
 
+            print("BOB FALLBACK PARSER")
+
+            stream = io.BytesIO(pdf_bytes)
+            transactions = parse_text(stream)
+
+        stream = io.BytesIO(pdf_bytes)
+        header_info = extract_header_info(stream)
+
+    # -------- IDFC --------
     elif bank == "IDFC First Bank":
 
         stream = io.BytesIO(pdf_bytes)
         transactions = parse_idfc(stream)
 
-    elif bank == "SBI":
+        if not transactions:
+
+            print("IDFC FALLBACK PARSER")
+
+            stream = io.BytesIO(pdf_bytes)
+            transactions = parse_text(stream)
 
         stream = io.BytesIO(pdf_bytes)
-        transactions = parse_sbi(stream)
+        header_info = extract_header_info(stream)
 
-    elif bank == "IDBI":
+    # -------- UNKNOWN --------
+    else:
 
-        stream = io.BytesIO(pdf_bytes)
-        transactions = parse_idbi(stream)
-
-    elif bank == "Bank of India":
+        print("UNKNOWN BANK → UNIVERSAL PARSER")
 
         stream = io.BytesIO(pdf_bytes)
-        transactions = parse_boi(stream)
-
-    elif bank == "Indian Overseas Bank":
+        transactions = parse_text(stream)
 
         stream = io.BytesIO(pdf_bytes)
-        transactions = parse_iob(stream)
+        header_info = extract_header_info(stream)
 
-    print("BANK DETECTED:", bank)
-    print("TRANSACTIONS FOUND:", len(transactions))
+    print("TOTAL TRANSACTIONS:", len(transactions))
 
     info = {"bank": bank}
 
     if isinstance(header_info, dict):
-     info.update(header_info)
+        info.update(header_info)
 
-
-    print("FINAL BANK:", bank)
-    print("TOTAL TRANSACTIONS:", len(transactions))
-    
     return {
-    "data": transactions if transactions else [],
-    "info": info,
-    "names": []
-}
+
+        "data": transactions,
+        "info": info,
+        "names": []
+
+    }
