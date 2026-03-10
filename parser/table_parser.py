@@ -4,10 +4,10 @@ from .schemas import BANK_SCHEMAS
 
 date_pattern = r"\b(\d{2}[-/]\d{2}[-/]\d{4}|\d{2}-[A-Za-z]{3}-\d{2,4}|\d{2} [A-Za-z]{3} \d{4})\b"
 
+
 def find_column(headers, keyword):
 
     headers = [str(h).lower() for h in headers]
-
     keyword = keyword.lower()
 
     for i, h in enumerate(headers):
@@ -27,7 +27,9 @@ def clean_amount(x):
 
     x = x.replace(",", "")
     x = x.replace("CR", "")
+    x = x.replace("Cr", "")
     x = x.replace("DR", "")
+    x = x.replace("Dr", "")
 
     return x.strip()
 
@@ -70,19 +72,20 @@ def parse_table(file, bank):
                     if not row:
                         continue
 
-
+                    # FULL ROW TEXT (IMPORTANT)
                     row_text = " ".join([str(x) if x else "" for x in row])
-
 
                     if not re.search(date_pattern, row_text):
                         continue
 
-
                     date_val = row[date_col] if date_col is not None else ""
-                    desc = row[desc_col] if desc_col is not None else ""
+
                     debit = row[debit_col] if debit_col is not None else ""
                     credit = row[credit_col] if credit_col is not None else ""
                     balance = row[bal_col] if bal_col is not None else ""
+
+                    # DESCRIPTION = FULL ROW TEXT
+                    desc = row_text
 
                     transactions.append({
 
