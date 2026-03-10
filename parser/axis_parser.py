@@ -1,49 +1,19 @@
 import pdfplumber
 import re
 
-date_pattern = r"\b(\d{2}[-/]\d{2}[-/]\d{4}|\d{2}-[A-Za-z]{3}-\d{2,4}|\d{2} [A-Za-z]{3} \d{4})\b"
+date_pattern = r"\d{2}[-/]\d{2}[-/]\d{4}"
 
 
-def clean_text(text):
+def clean_amount(x):
 
-    if not text:
+    if not x:
         return ""
 
-    text = str(text)
+    x = str(x)
 
-    text = text.replace("\n", " ")
-    text = text.replace("  ", " ")
+    x = x.replace(",", "")
 
-    return text.strip()
-
-
-def extract_party(description):
-
-    if "UPI" in description:
-
-        parts = description.split("/")
-
-        if len(parts) >= 4:
-            return parts[3]
-
-    return "Unknown"
-
-
-def extract_mode(description):
-
-    if "UPI" in description:
-        return "UPI"
-
-    if "IMPS" in description:
-        return "IMPS"
-
-    if "NEFT" in description:
-        return "NEFT"
-
-    if "ATM" in description:
-        return "ATM"
-
-    return "Other"
+    return x.strip()
 
 
 def parse_axis(file):
@@ -54,51 +24,54 @@ def parse_axis(file):
 
         for page in pdf.pages:
 
-            table = page.extract_table()
+            tables = page.extract_tables()
 
-            if not table:
+            if not tables:
                 continue
 
-            for row in table:
+            for table in tables:
 
-                if not row:
-                    continue
+                for row in table:
 
-                row_text = " ".join([str(x) for x in row if x])
+                    if not row:
+                        continue
 
-                if not re.search(date_pattern, row_text):
-                    continue
+                    row_text = " ".join([str(x) for x in row if x])
 
-                date = row[0] if len(row) > 0 else ""
+                    if not re.search(date_pattern, row_text):
+                        continue
 
-                cheque = row[1] if len(row) > 1 else ""
+                    date = re.search(date_pattern, row_text).group()
 
-                description = clean_text(row[2] if len(row) > 2 else "")
+                    narration = row[2] if len(row) > 2 else ""
 
-                debit = row[3] if len(row) > 3 else ""
-                credit = row[4] if len(row) > 4 else ""
-                balance = row[5] if len(row) > 5 else ""
+                    debit = ""
+                    credit = ""
+                    balance = ""
 
-                branch = row[6] if len(row) > 6 else ""
+                    try:
 
-                party = extract_party(description)
+                        debit = clean_amount(row[3])
+                        credit = clean_amount(row[4])
+                        balance = clean_amount(row[5])
 
-                mode = extract_mode(description)
+                    except:
+                        pass
 
-                transaction = {
-                    "Date": date,
-                    "Value_Date": "",
-                    "Description": description,
-                    "Cheque_No": cheque,
-                    "Debit": debit,
-                    "Credit": credit,
-                    "Balance": balance,
-                    "Branch_Code": branch,
-                    "Party": party,
-                    "Mode": mode,
-                    "Type": "",
-                }
+                    transactions.append({
 
-                transactions.append(transaction)
+                        "Date": date,
+                        "Value_Date": date,
+                        "Description": narration,
+                        "Cheque_No": "",
+                        "Debit": debit,
+                        "Credit": credit,
+                        "Balance": balance,
+                        "Branch_Code": "",
+                        "Party": "",
+                        "Mode": "",
+                        "Type": ""
+
+                    })
 
     return transactions
