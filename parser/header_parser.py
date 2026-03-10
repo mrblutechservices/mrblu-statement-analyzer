@@ -5,6 +5,7 @@ import re
 def extract_header_info(file):
 
     info = {
+        "Bank": "",
         "Account Holder": "",
         "Account Number": "",
         "Branch": "",
@@ -14,68 +15,48 @@ def extract_header_info(file):
         "Period": ""
     }
 
+    text = ""
+
     with pdfplumber.open(file) as pdf:
 
-        page = pdf.pages[0]
+        for page in pdf.pages[:2]:
 
-        text = page.extract_text()
+            t = page.extract_text()
 
-        if not text:
-            return info
+            if t:
+                text += t + "\n"
 
-        lines = text.split("\n")
+    text_upper = text.upper()
 
-        for line in lines:
+    # BANK DETECTION
+    if "IDFC FIRST BANK" in text_upper:
+        info["Bank"] = "IDFC First Bank"
 
-            l = line.strip()
+    elif "AXIS BANK" in text_upper:
+        info["Bank"] = "Axis Bank"
 
-            # ACCOUNT NUMBER
-            if "Account No" in l or "Account Number" in l:
+    elif "BANK OF BARODA" in text_upper:
+        info["Bank"] = "Bank of Baroda"
 
-                acc = re.search(r'\d{10,}', l)
+    lines = text.split("\n")
 
-                if acc:
-                    info["Account Number"] = acc.group()
+    for line in lines:
 
-            # IFSC
-            if "IFSC" in l:
+        l = line.strip()
 
-                ifsc = re.search(r'[A-Z]{4}0[A-Z0-9]{6}', l)
+        acc = re.search(r"\b\d{10,18}\b", l)
 
-                if ifsc:
-                    info["IFSC"] = ifsc.group()
+        if acc and info["Account Number"] == "":
+            info["Account Number"] = acc.group()
 
-            # EMAIL
-            email = re.search(r'[\w\.-]+@[\w\.-]+', l)
+        ifsc = re.search(r"[A-Z]{4}0[A-Z0-9]{6}", l)
 
-            if email:
-                info["Email"] = email.group()
+        if ifsc:
+            info["IFSC"] = ifsc.group()
 
-            # MOBILE
-            mobile = re.search(r'\b[6-9]\d{9}\b', l)
+        email = re.search(r"[\w\.-]+@[\w\.-]+", l)
 
-            if mobile:
-                info["Mobile"] = mobile.group()
-
-            # PERIOD
-            if "Statement Period" in l or "Period" in l:
-
-                info["Period"] = l.split(":")[-1].strip()
-
-            # BRANCH
-            if "Branch" in l:
-
-                info["Branch"] = l.split(":")[-1].strip()
-
-        # ACCOUNT HOLDER (Axis me address ke upar hota hai)
-
-        for i in range(len(lines)):
-
-            if "Account No" in lines[i]:
-
-                if i > 0:
-                    info["Account Holder"] = lines[i-1].strip()
-
-                break
+        if email:
+            info["Email"] = email.group()
 
     return info
