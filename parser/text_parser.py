@@ -1,7 +1,7 @@
 import pdfplumber
 import re
 
-date_pattern = r"\b(\d{2}[-/]\d{2}[-/]\d{4}|\d{2}-[A-Za-z]{3}-\d{2,4}|\d{2} [A-Za-z]{3} \d{4})\b"
+date_pattern = r"\b(\d{2}[-/]\d{2}[-/]\d{4}|\d{2}-[A-Za-z]{3}-\d{4})\b"
 
 
 def clean_amount(x):
@@ -35,63 +35,90 @@ def parse_text(file):
             if t:
                 text += t + "\n"
 
-    lines = text.split("\n")
+    lines = [l.strip() for l in text.split("\n") if l.strip()]
+
+    rows = []
+    current = ""
+
+    # -------- BUILD MULTI LINE ROWS -------- #
 
     for line in lines:
 
-        line = line.strip()
+        if re.search(date_pattern, line):
 
-        skip_words = [
-            "STATEMENT",
-            "ACCOUNT STATEMENT",
-            "OPENING BALANCE",
-            "CLOSING BALANCE",
-            "TOTAL CREDIT",
-            "TOTAL DEBIT",
-            "DESCRIPTION",
-            "PARTICULARS",
-        ]
+            if current:
+                rows.append(current)
 
-        if any(x in line.upper() for x in skip_words):
+            current = line
+
+        else:
+
+            current += " " + line
+
+    if current:
+        rows.append(current)
+
+    # -------- PARSE ROWS -------- #
+
+    for row in rows:
+
+        date_match = re.search(date_pattern, row)
+
+        if not date_match:
             continue
 
-        if not re.search(date_pattern, line):
+        nums = re.findall(r"\d[\d,]*\.\d{2}", row)
+
+        # MUST HAVE AMOUNT + BALANCE
+        if len(nums) < 2:
             continue
 
-        nums = re.findall(r"\d[\d,]*\.\d{2}\s*(?:CR|DR|Cr|Dr)?", line)
+        date = date_match.group()
+
+        nums = [clean_amount(x) for x in nums]
 
         debit = ""
         credit = ""
         balance = ""
 
-        if nums:
+        if len(nums) == 2:
 
-            amount_raw = nums[-1]
-            amount = clean_amount(amount_raw)
+            amount = nums[0]
+            balance = nums[1]
 
-            if "CR" in amount_raw.upper():
+            if "CR" in row.upper():
                 credit = amount
-            elif "DR" in amount_raw.upper():
-                debit = amount
             else:
                 debit = amount
 
-            if len(nums) >= 2:
-                balance = clean_amount(nums[-1])
+        elif len(nums) >= 3:
 
-        # Extract date
-        date_match = re.search(date_pattern, line)
+            debit = nums[0]
+            credit = nums[1]
+            balance = nums[-1]
 
-        date_val = ""
+        desc = row.replace(date, "").strip()
 
-        if date_match:
-            date_val = date_match.group(0)
+        # SKIP HEADER TEXT
+        skip_words = [
+            "STATEMENT",
+            "ACCOUNT STATEMENT",
+            "OPENING BALANCE",
+            "CLOSING BALANCE",
+            "TRAN DATE",
+            "VALUE DATE",
+            "NARRATION",
+            "PARTICULARS"
+        ]
+
+        if any(x in desc.upper() for x in skip_words):
+            continue
 
         transactions.append({
 
-            "Date": date_val,
-            "Value_Date": "",
-            "Description": line.strip(),
+            "Date": date,
+            "Value_Date": date,
+            "Description": desc,
             "Cheque_No": "",
             "Debit": debit,
             "Credit": credit,
@@ -102,5 +129,7 @@ def parse_text(file):
             "Type": ""
 
         })
+
+    print("UNIVERSAL PARSER:", len(transactions))
 
     return transactions
