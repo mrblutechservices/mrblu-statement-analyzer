@@ -2,10 +2,9 @@ let allData = []
 
 function upload(){
 
-    // CLEAR OLD DATA
+// CLEAR OLD DATA
 
 allData = []
-
 
 document.getElementById("bank").innerText = ""
 document.getElementById("holder").innerText = ""
@@ -27,7 +26,6 @@ alert("Please select a PDF file")
 return
 }
 
-// show loading if exists
 let loading = document.getElementById("loading")
 if(loading) loading.style.display = "block"
 
@@ -43,7 +41,6 @@ body: formData
 
 console.log("SERVER RESPONSE:", data)
 
-// hide loading
 if(loading) loading.style.display = "none"
 
 if(data.error){
@@ -51,14 +48,13 @@ alert(data.error)
 return
 }
 
-// support both formats
 allData = data.data || data.transactions || []
 
 console.log("Transactions loaded:", allData.length)
 
 if (allData.length === 0) {
-    alert("No transactions found in this PDF")
-    return
+alert("No transactions found in this PDF")
+return
 }
 
 
@@ -137,8 +133,18 @@ function renderTable(data){
 
 let table = document.getElementById("table")
 
+if(!table){
+console.error("Table not found")
+return
+}
+
 let thead = table.querySelector("thead")
 let tbody = table.querySelector("tbody")
+
+if(!thead || !tbody){
+console.error("Table structure incorrect")
+return
+}
 
 thead.innerHTML = ""
 tbody.innerHTML = ""
@@ -171,9 +177,7 @@ let headRow = document.createElement("tr")
 columns.forEach(col=>{
 
 let th = document.createElement("th")
-
 th.innerText = col
-
 headRow.appendChild(th)
 
 })
@@ -263,7 +267,6 @@ parseFloat(String(x.Credit).replace(/,/g,'')) > 0
 
 }
 
-
 renderTable(result)
 
 }
@@ -303,27 +306,6 @@ a.download = "statement.xlsx"
 a.click()
 
 })
-
-}
-
-
-
-
-// ---------------- DATE FORMAT ----------------
-
-function formatDate(date){
-
-let d = new Date(date)
-
-if(isNaN(d)) return date
-
-let day = String(d.getDate()).padStart(2,'0')
-
-let month = String(d.getMonth()+1).padStart(2,'0')
-
-let year = d.getFullYear()
-
-return day+"-"+month+"-"+year
 
 }
 
