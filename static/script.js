@@ -1,10 +1,15 @@
 let allData = []
+let filteredData = []
+
+
+// ---------------- UPLOAD ----------------
 
 function upload(){
 
 // CLEAR OLD DATA
 
 allData = []
+filteredData = []
 
 document.getElementById("bank").innerText = ""
 document.getElementById("holder").innerText = ""
@@ -49,6 +54,7 @@ return
 }
 
 allData = data.data || data.transactions || []
+filteredData = [...allData]
 
 console.log("Transactions loaded:", allData.length)
 
@@ -130,6 +136,8 @@ alert("Server error while uploading")
 // ---------------- TABLE RENDER ----------------
 
 function renderTable(data){
+
+filteredData = [...data]
 
 let table = document.getElementById("table")
 
@@ -278,7 +286,7 @@ renderTable(result)
 
 function download(){
 
-if(!allData || allData.length === 0){
+if(!filteredData || filteredData.length === 0){
 
 alert("No data to export")
 return
@@ -291,7 +299,7 @@ method:"POST",
 
 headers:{"Content-Type":"application/json"},
 
-body:JSON.stringify(allData)
+body:JSON.stringify(filteredData)
 
 })
 .then(res=>res.blob())
