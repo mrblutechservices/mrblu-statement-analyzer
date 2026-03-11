@@ -231,14 +231,52 @@ def filter_data():
 @app.route("/export_excel", methods=["POST"])
 def export_excel():
 
+    global data_store
+
     try:
 
-        data = request.json
+        req = request.json
 
-        df = pd.DataFrame(data)
+        if req and isinstance(req, list) and len(req) > 0:
+
+            df = pd.DataFrame(req)
+
+        else:
+
+            df = pd.DataFrame(data_store)
 
         if df.empty:
             return jsonify({"error": "No data to export"})
+
+        # correct column order
+        cols = [
+            "Date",
+            "Value_Date",
+            "Party",
+            "Description",
+            "Mode",
+            "Type",
+            "Cheque_No",
+            "Debit",
+            "Credit",
+            "Balance",
+            "Branch_Code"
+        ]
+
+        for c in cols:
+            if c not in df.columns:
+                df[c] = ""
+
+        df = df[cols]
+
+        # numeric cleanup
+        for col in ["Debit", "Credit", "Balance"]:
+
+            df[col] = (
+                df[col]
+                .astype(str)
+                .str.replace(",", "", regex=False)
+            )
 
         path = "result.xlsx"
 
