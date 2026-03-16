@@ -12,7 +12,6 @@ app.config['MAX_CONTENT_LENGTH'] = 20 * 1024 * 1024
 data_store = []
 info_store = {}
 
-
 # ---------------- NAME NORMALIZATION ---------------- #
 
 def normalize_name(name):
@@ -46,7 +45,8 @@ def extract_party_from_desc(desc):
     ignore = [
         "UPI","IMPS","RTGS","NEFT","ATM",
         "CR","DR","PAYMENT","TRANSFER",
-        "CHARGE","DEBIT","CREDIT"
+        "CHARGE","DEBIT","CREDIT","BANK",
+        "REF","TO","FROM"
     ]
 
     best = ""
@@ -108,6 +108,8 @@ def upload():
 
         fixed_data = []
 
+        sr = 1
+
         for row in data:
 
             if not isinstance(row, dict):
@@ -125,6 +127,8 @@ def upload():
 
             new_row = {
 
+                "Sr_No": sr,
+
                 "Date": row.get("Date",""),
                 "Value_Date": row.get("Value_Date",""),
                 "Party": party,
@@ -140,6 +144,8 @@ def upload():
             }
 
             fixed_data.append(new_row)
+
+            sr += 1
 
         data_store = fixed_data
         info_store = info
@@ -248,8 +254,8 @@ def export_excel():
         if df.empty:
             return jsonify({"error": "No data to export"})
 
-        # correct column order
         cols = [
+            "Sr_No",
             "Date",
             "Value_Date",
             "Party",
@@ -269,7 +275,6 @@ def export_excel():
 
         df = df[cols]
 
-        # numeric cleanup
         for col in ["Debit", "Credit", "Balance"]:
 
             df[col] = (
