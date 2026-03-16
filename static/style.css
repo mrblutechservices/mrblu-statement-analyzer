@@ -295,21 +295,21 @@ font-weight:500;
 
 /* Debit column */
 
-td:nth-child(8){
+td:nth-child(9){
 color:#e53935;
 font-weight:600;
 }
 
 /* Credit column */
 
-td:nth-child(9){
+td:nth-child(10){
 color:#1b8f3a;
 font-weight:600;
 }
 
 /* Balance column */
 
-td:nth-child(10){
+td:nth-child(11){
 color:#5a3e2b;
 font-weight:600;
 }
