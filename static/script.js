@@ -165,6 +165,7 @@ return
 }
 
 let columns = [
+"Sr_No",
 "Date",
 "Value_Date",
 "Party",
