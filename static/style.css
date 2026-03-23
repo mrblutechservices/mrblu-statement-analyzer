@@ -328,3 +328,62 @@ font-size:14px;
 color:#2b3c5a;
 
 }
+
+/* TABLE FIX */
+.table-wrapper {
+    width: 100%;
+    overflow-x: hidden;
+}
+
+#table {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+    font-size: 12px;
+}
+
+#table th {
+    background-color: #1f2b3a;
+    color: white;
+    padding: 8px;
+    text-align: left;
+}
+
+#table td {
+    padding: 6px;
+    border-bottom: 1px solid #ddd;
+    word-wrap: break-word;
+    white-space: normal;
+}
+
+/* COLUMN WIDTH CONTROL */
+#table th:nth-child(1) { width: 40px; }   /* Sr No */
+#table th:nth-child(2) { width: 80px; }   /* Date */
+#table th:nth-child(3) { width: 90px; }   /* Value Date */
+#table th:nth-child(4) { width: 140px; }  /* Party */
+#table th:nth-child(5) { width: 260px; }  /* Description */
+#table th:nth-child(6) { width: 70px; }   /* Mode */
+#table th:nth-child(7) { width: 60px; }   /* Type */
+#table th:nth-child(8) { width: 80px; }   /* Cheque */
+#table th:nth-child(9) { width: 90px; }   /* Debit */
+#table th:nth-child(10){ width: 90px; }   /* Credit */
+#table th:nth-child(11){ width: 100px; }  /* Balance */
+#table th:nth-child(12){ width: 80px; }   /* Branch */
+
+.container {
+    width: 95%;
+    margin: auto;
+}
+
+.card {
+    margin: 20px auto;
+    width: 95%;
+    padding: 15px;
+    background: #f8f9fb;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.filters {
+    margin-bottom: 10px;
+}
