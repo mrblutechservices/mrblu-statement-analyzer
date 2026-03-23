@@ -40,31 +40,40 @@ def extract_party_from_desc(desc):
 
     d = desc.upper()
 
-    tokens = re.split(r"[\/\-\s]", d)
+    # Remove numbers and refs
+    d = re.sub(r"\d+", " ", d)
 
-    ignore = [
-        "UPI","IMPS","RTGS","NEFT","ATM",
-        "CR","DR","PAYMENT","TRANSFER",
-        "CHARGE","DEBIT","CREDIT","BANK",
-        "REF","TO","FROM"
+    # Remove common bank words
+    remove_words = [
+        "IMPS", "UPI", "RTGS", "NEFT", "ATM",
+        "TRANSFER", "PAYMENT", "PAYMENTBACK",
+        "EXTRAPAYMENT", "CHARGE", "REF",
+        "BANK", "FROM", "TO", "BY", "INB"
     ]
 
-    best = ""
+    for w in remove_words:
+        d = d.replace(w, " ")
 
-    for t in tokens:
+    # Remove symbols
+    d = re.sub(r"[^A-Z ]", " ", d)
 
-        name = re.sub(r"[^A-Z ]", "", t).strip()
+    # Remove extra spaces
+    d = re.sub(r"\s+", " ", d).strip()
 
-        if name in ignore:
-            continue
+    words = d.split()
 
-        if len(name) > len(best):
-            best = name
+    if len(words) == 0:
+        return "Unknown"
 
-    if len(best) > 3:
-        return best.title()
+    # Take last 2–3 words as party name
+    if len(words) >= 3:
+        party = " ".join(words[-3:])
+    elif len(words) == 2:
+        party = " ".join(words)
+    else:
+        party = words[0]
 
-    return "Unknown"
+    return party.title()
 
 
 # ---------------- HOME ---------------- #
@@ -91,7 +100,9 @@ def upload():
         if file.filename == "":
             return jsonify({"error": "Empty file name"})
 
-        result = parse_pdf(file)
+        
+        bank = request.form.get("bank")
+        result = parse_pdf(file, bank)
 
         if isinstance(result, dict):
 
