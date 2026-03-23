@@ -37,6 +37,9 @@ if(loading) loading.style.display = "block"
 let formData = new FormData()
 formData.append("pdf", file)
 
+let bank = document.getElementById("bank_select").value
+formData.append("bank", bank)
+
 fetch("/upload", {
 method: "POST",
 body: formData
