@@ -4,18 +4,23 @@ import re
 date_pattern = r"\d{2}/\d{2}/\d{4}"
 
 
-def clean_amount(x):
+def parse_amount_with_sign(x):
     if not x:
-        return 0.0
-    x = str(x)
-    x = x.replace(",", "")
-    x = x.replace("Cr", "")
-    x = x.replace("Dr", "")
-    x = x.strip()
+        return None
+
+    x = str(x).replace(",", "").strip()
+
+    sign = 1
+    if x.endswith("Dr") or x.endswith("DR"):
+        sign = -1
+
+    x = x.replace("Cr", "").replace("CR", "")
+    x = x.replace("Dr", "").replace("DR", "")
+
     try:
-        return float(x)
+        return float(x) * sign
     except:
-        return 0.0
+        return None
 
 
 def parse_bob(file):
@@ -35,57 +40,42 @@ def parse_bob(file):
 
     for line in lines:
 
-        if re.search(date_pattern, line):
+        if not re.search(date_pattern, line):
+            continue
 
-            parts = line.split()
+        date = re.search(date_pattern, line).group()
 
-            if len(parts) < 5:
-                continue
+        numbers = re.findall(r"\d[\d,]*\.\d{2}\s?(Cr|Dr)?", line)
 
-            date = parts[0]
-            value_date = parts[1]
+        # Extract full amounts including Cr/Dr
+        amounts = re.findall(r"\d[\d,]*\.\d{2}\s?(?:Cr|Dr)?", line)
 
-            numbers = re.findall(r"\d[\d,]*\.\d{2}", line)
+        if len(amounts) == 0:
+            continue
 
-            if len(numbers) < 2:
-                continue
+        balance = parse_amount_with_sign(amounts[-1])
 
-            numbers = [clean_amount(x) for x in numbers]
+        desc = line
+        desc = re.sub(date_pattern, "", desc)
+        desc = re.sub(r"\d[\d,]*\.\d{2}\s?(Cr|Dr)?", "", desc)
+        desc = re.sub(r"\s+", " ", desc).strip()
 
-            if len(numbers) == 2:
-                amount = numbers[0]
-                balance = numbers[1]
+        transactions.append({
+            "Date": date,
+            "Value_Date": date,
+            "Description": desc,
+            "Cheque_No": "",
+            "Debit": 0,
+            "Credit": 0,
+            "Balance": balance,
+            "Branch_Code": "",
+            "Party": "",
+            "Mode": "",
+            "Type": ""
+        })
 
-                if "CR" in line.upper():
-                    credit = amount
-                    debit = 0
-                else:
-                    debit = amount
-                    credit = 0
-            else:
-                debit = numbers[0]
-                credit = numbers[1]
-                balance = numbers[-1]
+    # IMPORTANT — Reverse order (oldest first)
+    transactions = list(reversed(transactions))
 
-            desc = line
-            desc = re.sub(date_pattern, "", desc)
-            desc = re.sub(r"\d[\d,]*\.\d{2}", "", desc)
-            desc = re.sub(r"CR|DR", "", desc)
-            desc = re.sub(r"\s+", " ", desc).strip()
-
-            transactions.append({
-                "Date": date,
-                "Value_Date": value_date,
-                "Description": desc,
-                "Cheque_No": "",
-                "Debit": debit,
-                "Credit": credit,
-                "Balance": balance,
-                "Branch_Code": "",
-                "Party": "",
-                "Mode": "",
-                "Type": "",
-            })
-
-    print("BOB TEXT ROWS:", len(transactions))
+    print("BOB PARSED:", len(transactions))
     return transactions
