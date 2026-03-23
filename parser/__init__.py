@@ -1,1 +1,0 @@
-from .core_parser import parse_pdf
